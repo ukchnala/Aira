@@ -37,12 +37,39 @@ class AgentTtsManager(private val context: Context) : TextToSpeech.OnInitListene
         if (status == TextToSpeech.SUCCESS) {
             val languageCode = SecureKeyStore.getDefaultLanguage(context)
             val locale = Locale(languageCode, "IN")
-            val result = tts?.setLanguage(locale)
+            var result = tts?.setLanguage(locale)
 
+            // Prefer Hindi (India) when the configured locale is unavailable; this is the
+            // intended default for this assistant, while a supported saved locale is respected.
             if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                Log.w(TAG, "Language $languageCode not supported, falling back to default")
+                Log.w(TAG, "Language $languageCode not supported, trying Hindi (India)")
+                result = tts?.setLanguage(Locale("hi", "IN"))
+            }
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                Log.w(TAG, "Hindi voice data unavailable, falling back to device locale")
                 tts?.setLanguage(Locale.getDefault())
             }
+
+            // Voice engines differ by device. Prefer an explicitly labelled female Hindi
+            // voice if the installed engine exposes one; otherwise retain its best default.
+            try {
+                val availableVoices = tts?.voices.orEmpty()
+                val hindiVoices = availableVoices.filter { it.locale.language == "hi" && it.locale.country.equals("IN", true) }
+                val preferredVoice = hindiVoices.firstOrNull {
+                    it.name.contains("female", ignoreCase = true) ||
+                        it.name.contains("fem", ignoreCase = true)
+                } ?: hindiVoices.firstOrNull { !it.isNetworkConnectionRequired }
+                if (preferredVoice != null) {
+                    tts?.voice = preferredVoice
+                    Log.d(TAG, "Selected Hindi voice: ${preferredVoice.name}")
+                } else {
+                    Log.w(TAG, "No Hindi voice installed; keeping engine-selected voice")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not select preferred Hindi voice: ${e.message}")
+            }
+            tts?.setSpeechRate(0.94f)
+            tts?.setPitch(1.03f)
 
             // Route audio through ASSISTANT stream (plays through loudspeaker, not earpiece)
             val audioAttributes = AudioAttributes.Builder()
