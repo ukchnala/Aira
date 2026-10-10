@@ -22,7 +22,11 @@ import kotlinx.coroutines.*
 class AgentLlmEngine(private val context: Context) {
 
     private val ttsManager = AgentTtsManager(context)
-    private val memory = JarvisMemory(context.applicationContext)
+    private val memory = JarvisMemory(context.applicationContext).apply {
+        rememberFact("response_language", "Hindi/Hinglish preferred; keep spoken replies natural and concise in Hindi unless the user asks otherwise.")
+        rememberFact("main_project", "Aira: an Android phone-first AI assistant being built from the Jarvis base, with voice, persistent memory, screen control, floating bubble and wake-word goals.")
+        rememberFact("working_style", "Give direct practical help in small steps; avoid asking the user for unnecessary screenshots or commands.")
+    }
 
     companion object {
         private const val TAG = "AgentLlmEngine"
@@ -81,6 +85,7 @@ RULES:
 
         onStatusUpdate?.invoke("🧠 Samajh raha hoon: \"$command\"")
         Log.d(TAG, "Starting task: $command")
+        val stableFacts = memory.loadFacts()
         val relevantMemories = memory.search(command)
         memory.saveCommand(command)
 
@@ -104,6 +109,8 @@ RULES:
             // 2. Compact LLM message (save tokens)
             val userMessage = if (iteration == 1) {
                 buildString {
+                    append("USER AND PROJECT MEMORY (persistent context; follow unless current request overrides):\\n")
+                    if (stableFacts.isNotEmpty()) append(stableFacts.joinToString("\\n")).append("\\n")
                     append("CMD:$command\n")
                     if (relevantMemories.isNotEmpty()) {
                         append("RELEVANT PAST MEMORY (use only if helpful; do not claim certainty):\n")
