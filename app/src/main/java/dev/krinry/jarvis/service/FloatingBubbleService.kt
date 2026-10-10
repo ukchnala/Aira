@@ -39,6 +39,7 @@ import dev.krinry.jarvis.MainActivity
 import dev.krinry.jarvis.R
 import dev.krinry.jarvis.agent.AgentLlmEngine
 import dev.krinry.jarvis.ai.GroqApiClient
+import com.openwakeword.OpenWakeWord
 import kotlinx.coroutines.*
 import java.io.File
 import java.io.FileOutputStream
@@ -92,6 +93,8 @@ class FloatingBubbleService : Service() {
     private var isProcessingCommand = false
     private var recordingJob: Job? = null
     private var audioRecord: AudioRecord? = null
+    private var wakeWordDetector: OpenWakeWord? = null
+    private var wakeWordStarting = false
     private val subtitleHistory = mutableListOf<String>()
 
     // Keep screen on
@@ -119,10 +122,12 @@ class FloatingBubbleService : Service() {
                     stopThinkingAnimation()
                     playCompletionSound()
                     vibratePattern(longArrayOf(0, 80, 60, 80)) // success pattern
-                } else if (status.startsWith("❌") || status.startsWith("⚠️") || status.startsWith("⏹")) {
+                    scheduleWakeWordRestart()
+                } else if (status.startsWith("❌") || status.startsWith("⏹")) {
                     isProcessingCommand = false
                     stopThinkingAnimation()
                     vibrateShort()
+                    scheduleWakeWordRestart()
                 }
             }
         }
@@ -135,6 +140,7 @@ class FloatingBubbleService : Service() {
             ACTION_STOP -> { stopSelf(); return START_NOT_STICKY }
         }
         if (bubbleView == null) createBubble()
+        scheduleWakeWordRestart(1200L)
         return START_STICKY
     }
 
@@ -142,6 +148,7 @@ class FloatingBubbleService : Service() {
         isRunning = false
         scope.cancel()
         stopRecording()
+        stopWakeWordDetection()
         stopThinkingAnimation()
         releaseWakeLock()
         bubbleView?.let { try { windowManager.removeView(it) } catch (_: Exception) {} }
@@ -454,6 +461,7 @@ class FloatingBubbleService : Service() {
     // =========================================================================
 
     private fun onBubbleTapped() {
+        stopWakeWordDetection()
         if (isProcessingCommand) {
             agentEngine?.cancelTask()
             isProcessingCommand = false
@@ -557,11 +565,63 @@ class FloatingBubbleService : Service() {
     // === Whisper STT Recording ===
     // =========================================================================
 
-    private fun startWhisperRecording() {
-        if (!AutoAgentService.isRunning()) {
-            addSubtitle("❌ Enable Accessibility Service first!")
+
+    // Local on-device wake word. The bundled model listens for "Hey Jarvis".
+    private fun scheduleWakeWordRestart(delayMs: Long = 1800L) {
+        scope.launch {
+            delay(delayMs)
+            if (!isListening && !isProcessingCommand && wakeWordDetector == null && !wakeWordStarting) startWakeWordDetection()
+        }
+    }
+
+    private fun startWakeWordDetection() {
+        if (wakeWordDetector != null || wakeWordStarting || isListening || isProcessingCommand) return
+        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            addSubtitle("🎤 Allow microphone permission to enable Hey Jarvis")
             return
         }
+        wakeWordStarting = true
+        try {
+            val detector = OpenWakeWord.Builder(applicationContext)
+                .setModel(OpenWakeWord.BuiltInModel.HEY_JARVIS)
+                .setThreshold(0.58f)
+                .setDebounceMs(2500L)
+                .build()
+            wakeWordDetector = detector
+            detector.start {
+                scope.launch {
+                    if (!isListening && !isProcessingCommand) {
+                        addSubtitle("👂 Hey Jarvis detected — bolo bhai")
+                        stopWakeWordDetection()
+                        startWhisperRecording()
+                    }
+                }
+            }
+            addSubtitle("👂 Hey Jarvis background listening ON")
+        } catch (e: Exception) {
+            Log.e(TAG, "Wake-word detector failed to start", e)
+            addSubtitle("⚠️ Wake-word unavailable: ${e.message?.take(45)}")
+            stopWakeWordDetection()
+        } finally {
+            wakeWordStarting = false
+        }
+    }
+
+    private fun stopWakeWordDetection() {
+        val detector = wakeWordDetector
+        wakeWordDetector = null
+        try { detector?.stop() } catch (e: Exception) { Log.w(TAG, "Wake-word stop failed: ${e.message}") }
+        try { detector?.release() } catch (e: Exception) { Log.w(TAG, "Wake-word release failed: ${e.message}") }
+    }
+
+    private fun startWhisperRecording() {
+        stopWakeWordDetection()
+        if (!AutoAgentService.isRunning()) {
+            addSubtitle("❌ Enable Accessibility Service first!")
+            scheduleWakeWordRestart()
+            return
+        }
+        if (isListening || isProcessingCommand) return
 
         isListening = true
         animateBubble(true)
@@ -611,6 +671,7 @@ class FloatingBubbleService : Service() {
                 withContext(Dispatchers.Main) {
                     if (transcript.isNullOrBlank()) {
                         addSubtitle("❌ Couldn't understand, try again")
+                        scheduleWakeWordRestart()
                     } else {
                         val command = stripWakeWord(transcript)
                         lastCommand = command
