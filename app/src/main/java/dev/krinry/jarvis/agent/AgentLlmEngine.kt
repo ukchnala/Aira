@@ -109,8 +109,8 @@ RULES:
             // 2. Compact LLM message (save tokens)
             val userMessage = if (iteration == 1) {
                 buildString {
-                    append("USER AND PROJECT MEMORY (persistent context; follow unless current request overrides):\\n")
-                    if (stableFacts.isNotEmpty()) append(stableFacts.joinToString("\\n")).append("\\n")
+                    append("USER AND PROJECT MEMORY (persistent context; follow unless current request overrides):\n")
+                    if (stableFacts.isNotEmpty()) append(stableFacts.joinToString("\n")).append("\n")
                     append("CMD:$command\n")
                     if (relevantMemories.isNotEmpty()) {
                         append("RELEVANT PAST MEMORY (use only if helpful; do not claim certainty):\n")
