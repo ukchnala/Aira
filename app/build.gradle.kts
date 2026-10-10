@@ -76,6 +76,9 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     
+    // On-device Hey Jarvis wake-word detection
+    implementation("com.github.msnilsen:openwakeword-android:0.1.0")
+
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     
