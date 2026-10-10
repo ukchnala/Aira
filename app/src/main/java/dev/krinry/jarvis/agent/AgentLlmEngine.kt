@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import dev.krinry.jarvis.ai.GroqApiClient
 import dev.krinry.jarvis.service.AutoAgentService
+import dev.krinry.jarvis.memory.JarvisMemory
 import kotlinx.coroutines.*
 
 /**
@@ -21,6 +22,7 @@ import kotlinx.coroutines.*
 class AgentLlmEngine(private val context: Context) {
 
     private val ttsManager = AgentTtsManager(context)
+    private val memory = JarvisMemory(context.applicationContext)
 
     companion object {
         private const val TAG = "AgentLlmEngine"
@@ -71,12 +73,16 @@ RULES:
         val service = AutoAgentService.instance
         if (service == null) {
             onStatusUpdate?.invoke("❌ Accessibility Service on nahi hai")
+            memory.saveCommand(command)
+            memory.finishLatest(command, "Failed: Accessibility Service is off")
             ttsManager.speak("Accessibility Service chalu karo pehle.")
             return
         }
 
         onStatusUpdate?.invoke("🧠 Samajh raha hoon: \"$command\"")
         Log.d(TAG, "Starting task: $command")
+        val relevantMemories = memory.search(command)
+        memory.saveCommand(command)
 
         for (iteration in 1..MAX_ITERATIONS) {
             if (!isActive) return
@@ -97,7 +103,15 @@ RULES:
 
             // 2. Compact LLM message (save tokens)
             val userMessage = if (iteration == 1) {
-                "CMD:$command\nUI:$uiJson"
+                buildString {
+                    append("CMD:$command\n")
+                    if (relevantMemories.isNotEmpty()) {
+                        append("RELEVANT PAST MEMORY (use only if helpful; do not claim certainty):\n")
+                        append(relevantMemories.joinToString("\n"))
+                        append("\n")
+                    }
+                    append("UI:$uiJson")
+                }
             } else {
                 "UI:$uiJson"
             }
@@ -109,12 +123,14 @@ RULES:
             } catch (e: Exception) {
                 Log.e(TAG, "LLM call failed: ${e.message}")
                 onStatusUpdate?.invoke("❌ ${e.message?.take(50) ?: "Server error"}")
+                memory.finishLatest(command, "Failed: ${e.message?.take(300) ?: "Server error"}")
                 ttsManager.speak("Server se jawab nahi aaya.")
                 return
             }
 
             if (llmResponse == null) {
                 onStatusUpdate?.invoke("❌ Empty response from server")
+                memory.finishLatest(command, "Failed: empty response from server")
                 ttsManager.speak("Server ne koi jawab nahi diya.")
                 return
             }
@@ -150,6 +166,7 @@ RULES:
             // 9. Check if done
             if (action.status == "done" || action.action == "done") {
                 onStatusUpdate?.invoke("✅ Ho gaya: ${action.reason ?: "Task complete"}")
+                memory.finishLatest(command, "Completed: ${action.reason ?: action.action}")
                 delay(2500) // TTS finish hone do
                 return
             }
@@ -174,6 +191,7 @@ RULES:
         }
 
         onStatusUpdate?.invoke("⚠️ Bahut steps ho gaye ($MAX_ITERATIONS)")
+        memory.finishLatest(command, "Stopped after maximum $MAX_ITERATIONS steps without confirmed completion")
         ttsManager.speak("Kaam time pe complete nahi ho paya. Chhota command try karo.")
     }
 
