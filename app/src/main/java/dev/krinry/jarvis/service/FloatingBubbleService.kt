@@ -88,6 +88,9 @@ class FloatingBubbleService : Service() {
     private var subtitleView: View? = null
     private var agentEngine: AgentLlmEngine? = null
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private val subtitleHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val hideSubtitleRunnable = Runnable { clearSubtitles() }
+
 
     private var isListening = false
     private var isProcessingCommand = false
@@ -147,6 +150,7 @@ class FloatingBubbleService : Service() {
     override fun onDestroy() {
         isRunning = false
         scope.cancel()
+        subtitleHandler.removeCallbacks(hideSubtitleRunnable)
         stopRecording()
         stopWakeWordDetection()
         stopThinkingAnimation()
@@ -445,9 +449,14 @@ class FloatingBubbleService : Service() {
             val tv = view.findViewWithTag<TextView>("subtitle_text")
             tv?.text = subtitleHistory.joinToString("\n")
         }
+
+        // Auto-hide status subtitles after 5 seconds; new updates restart the timer.
+        subtitleHandler.removeCallbacks(hideSubtitleRunnable)
+        subtitleHandler.postDelayed(hideSubtitleRunnable, 5000L)
     }
 
     private fun clearSubtitles() {
+        subtitleHandler.removeCallbacks(hideSubtitleRunnable)
         subtitleHistory.clear()
         subtitleView?.let { view ->
             val fadeOut = AlphaAnimation(1f, 0f).apply { duration = 200 }
