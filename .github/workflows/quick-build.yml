@@ -1,8 +1,10 @@
 name: Quick Build APK
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
-    description: 'Build APK from current source code (no config changes)'
 
 jobs:
   build:
@@ -31,6 +33,7 @@ jobs:
         with:
           name: quick-build-apk
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -39,14 +42,10 @@ jobs:
           name: Quick Build #${{ github.run_number }}
           files: app/build/outputs/apk/debug/*.apk
           body: |
-            ## ⚡ Quick Build
-            
-            Built directly from source code without any modifications.
-            
-            - **Branch:** ${{ github.ref_name }}
-            - **Commit:** ${{ github.sha }}
-            - **Build Type:** Debug
-            
-            > This APK contains exactly what's in the repository.
+            ## Quick Build APK
+            - Branch: ${{ github.ref_name }}
+            - Commit: ${{ github.sha }}
+            - Application ID: com.aira.jarvis
+            - Build type: Debug
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
