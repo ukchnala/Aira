@@ -38,11 +38,11 @@ android {
     }
 
     defaultConfig {
-        applicationId = "dev.krinry.jarvis"
+        applicationId = "com.aira.jarvis"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -89,7 +89,7 @@ dependencies {
     // Coil (if UI needs it for bubbles)
     implementation("io.coil-kt.coil3:coil-compose:3.3.0")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.3.0")
-
+    
     // Security (EncryptedSharedPreferences for API key storage)
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     
