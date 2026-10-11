@@ -28,21 +28,14 @@ android {
         }
     }
 
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
-            isUniversalApk = true
-        }
-    }
-
+    // Build one installable APK instead of multiple ABI split APKs.
+    // This avoids accidentally distributing a split/config APK as the standalone installer.
     defaultConfig {
         applicationId = "com.aira.jarvis"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 3
+        versionName = "1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -75,24 +68,24 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    
+
     // On-device Hey Jarvis wake-word detection
     implementation("com.github.msnilsen:openwakeword-android:0.1.0")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
-    
+
     // OkHttp & JSON
     implementation("com.squareup.okhttp3:okhttp:5.3.2")
     implementation("com.google.code.gson:gson:2.13.2")
-    
+
     // Coil (if UI needs it for bubbles)
     implementation("io.coil-kt.coil3:coil-compose:3.3.0")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.3.0")
-    
+
     // Security (EncryptedSharedPreferences for API key storage)
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
-    
+
     // Material icons
     implementation("androidx.compose.material:material-icons-extended")
 
