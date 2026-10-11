@@ -16,36 +16,56 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-36.1 build-tools;36.1.0'
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
+      - name: Build standalone Debug APK
+        run: ./gradlew --no-daemon clean assembleDebug
 
-      - name: Upload Debug APK
+      - name: Verify APK integrity, signature, and package metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          unzip -t "$APK" | tail -n 2
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          "$APKSIGNER" verify --verbose "$APK"
+          "$AAPT" dump badging "$APK" | grep -E "^(package:|sdkVersion:|targetSdkVersion:)"
+          "$AAPT" dump badging "$APK" | grep -q "name='com.aira.jarvis'"
+          echo "APK validation passed: $APK"
+
+      - name: Upload validated standalone APK
         uses: actions/upload-artifact@v4
         with:
-          name: quick-build-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: Aira-Standalone-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: quick-${{ github.run_number }}
-          name: Quick Build #${{ github.run_number }}
-          files: app/build/outputs/apk/debug/*.apk
+          tag_name: aira-${{ github.run_number }}
+          name: Aira Build #${{ github.run_number }}
+          files: app/build/outputs/apk/debug/app-debug.apk
           body: |
-            ## Quick Build APK
+            ## Aira Standalone APK
             - Branch: ${{ github.ref_name }}
             - Commit: ${{ github.sha }}
             - Application ID: com.aira.jarvis
             - Build type: Debug
+            - Single standalone APK, integrity and signature checked in CI.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
