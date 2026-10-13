@@ -69,7 +69,7 @@ class FloatingBubbleService : Service() {
         private const val NOTIFICATION_ID = 42
         private const val CHANNEL_ID = "jarvis_agent_channel"
 
-        private const val MAX_RECORDING_SECONDS = 10
+        private const val MAX_RECORDING_SECONDS = 45
         private const val SAMPLE_RATE = 16000
         private const val MAX_SUBTITLE_LINES = 5
 
