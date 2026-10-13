@@ -201,9 +201,17 @@ object GroqApiClient {
         }
 
         val response = client.newCall(requestBuilder.build()).execute()
-        if (!response.isSuccessful) return@withContext null
-
-        val body = response.body?.string() ?: return@withContext null
+        val body = response.body?.string().orEmpty()
+        if (!response.isSuccessful) {
+            val detail = try {
+                JSONObject(body).optJSONObject("error")?.optString("message").orEmpty()
+            } catch (_: Exception) { "" }
+            val message = detail.ifBlank { "Provider returned HTTP ${response.code}" }
+                .replace("\\r", " ").replace("\\n", " ").take(180)
+            Log.e(TAG, "Chat HTTP ${response.code}: $message")
+            throw Exception("API HTTP ${response.code}: $message")
+        }
+        if (body.isBlank()) return@withContext null
         JSONObject(body).optJSONArray("choices")?.let { choices ->
             if (choices.length() > 0) {
                 choices.getJSONObject(0).optJSONObject("message")?.optString("content")
