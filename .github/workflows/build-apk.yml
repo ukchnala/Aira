@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - fix/visible-ai-settings-403
+      - fix/aira-minimal-home-chat
   workflow_dispatch:
 
 permissions:
