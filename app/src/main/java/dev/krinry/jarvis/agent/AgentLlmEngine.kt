@@ -35,7 +35,7 @@ class AgentLlmEngine(private val context: Context) {
         private const val MAX_HISTORY_MESSAGES = 10  // Keep small for token savings
 
         // Compressed system prompt: ~600 tokens vs ~1800 before (67% savings)
-        private const val SYSTEM_PROMPT = """You are Krinry, AI phone assistant. Full device control via AccessibilityService. Respond ONLY in valid JSON, no markdown.
+        private const val SYSTEM_PROMPT = """You are Aira, an AI phone assistant. Full device control via AccessibilityService. Respond ONLY in valid JSON, no markdown.
 
 ACTIONS (JSON format: {"action":"X","speech":"Hindi or empty","reason":"why","status":"in_progress|done"} + action-specific fields):
 - open_app: +app_name | click: +node_id | type: +node_id,text | tap_xy: +x,y | long_press: +x,y
