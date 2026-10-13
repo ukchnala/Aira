@@ -3,6 +3,8 @@ package dev.krinry.jarvis
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.accessibilityservice.AccessibilityServiceInfo
+import android.view.accessibility.AccessibilityManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -57,6 +59,11 @@ fun AiraHomeScreen() {
     }
 
     fun toggleBackground(enabled: Boolean) {
+        if (enabled && !isAiraAccessibilityEnabled(context)) {
+            status = "Screen control ke liye Aira Accessibility Service enable karo."
+            context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            return
+        }
         if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(context)) {
             status = "Floating bubble ke liye Display over other apps permission allow karo."
             context.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -221,4 +228,11 @@ fun AiraHomeScreen() {
             }
         }
     }
+}
+
+
+private fun isAiraAccessibilityEnabled(context: android.content.Context): Boolean {
+    val manager = context.getSystemService(android.content.Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
+    return manager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
+        .any { it.resolveInfo.serviceInfo.packageName == context.packageName }
 }
