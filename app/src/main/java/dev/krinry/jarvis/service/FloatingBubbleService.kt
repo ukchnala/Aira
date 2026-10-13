@@ -169,7 +169,7 @@ class FloatingBubbleService : Service() {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val channel = NotificationChannel(
-                    CHANNEL_ID, "Jarvis AI Agent",
+                    CHANNEL_ID, "Aira AI Agent",
                     NotificationManager.IMPORTANCE_LOW
                 ).apply {
                     description = "Jarvis background service"
@@ -187,7 +187,7 @@ class FloatingBubbleService : Service() {
 
             val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle("Jarvis Active")
+                .setContentTitle("Aira Active")
                 .setContentText("Tap bubble to give command")
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setOngoing(true)
