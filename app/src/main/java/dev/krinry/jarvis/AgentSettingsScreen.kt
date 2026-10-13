@@ -147,34 +147,12 @@ fun AgentSettingsScreen(onBack: () -> Unit) {
 
             Spacer(Modifier.height(24.dp))
 
-            // ===== PERMISSIONS =====
-            SectionHeader("Setup", Icons.Default.Shield)
-            PermissionRow(Icons.Default.Accessibility, "Accessibility Service", "Read & interact with apps", isAccessibilityEnabled) {
-                context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
-            }
-            PermissionRow(Icons.Default.Layers, "Display Over Apps", "Floating AI bubble", hasOverlayPermission) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    context.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
-                }
-            }
-            PermissionRow(Icons.Default.Mic, "Microphone", "Voice commands", hasAudioPermission) { audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO) }
-
-            if (agentEnabled) {
-                Spacer(Modifier.height(8.dp))
-                Box(
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                        .background(if (allReady) JarvisSuccess.copy(alpha = 0.1f) else JarvisError.copy(alpha = 0.1f))
-                        .padding(12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        if (allReady) "✅ All set! Tap floating bubble to start." else "⚠️ Grant all permissions above.",
-                        fontSize = 13.sp, color = if (allReady) JarvisSuccess else JarvisError, textAlign = TextAlign.Center
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(24.dp))
+            // API setup is deliberately near the top so it is easy to find.
+            Text(
+                "Set your AI provider and API key here. If chat shows an HTTP error, the message will explain the cause.",
+                fontSize = 13.sp, color = DarkOnSurfaceVariant,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
 
             // ===== AI PROVIDER (DROPDOWN FORM) =====
             SectionHeader("AI Configuration", Icons.Default.Hub)
@@ -230,6 +208,12 @@ fun AgentSettingsScreen(onBack: () -> Unit) {
                 Column(Modifier.padding(16.dp)) {
                     Text("${selectedProvider.displayName} API Key", fontSize = 12.sp, color = DarkOnSurfaceVariant, fontWeight = FontWeight.Medium)
                     Spacer(Modifier.height(6.dp))
+                    Text(
+                        if (apiKey.isBlank()) "Not configured — paste your API key below" else "API key saved on this phone",
+                        fontSize = 12.sp,
+                        color = if (apiKey.isBlank()) JarvisWarning else JarvisSuccess
+                    )
+                    Spacer(Modifier.height(6.dp))
                     OutlinedTextField(
                         value = apiKey,
                         onValueChange = { newKey ->
@@ -270,6 +254,35 @@ fun AgentSettingsScreen(onBack: () -> Unit) {
             ) { modelPickerTarget = "fallback"; showModelPicker = true }
 
             Spacer(Modifier.height(40.dp))
+
+            // ===== PERMISSIONS =====
+            SectionHeader("Setup", Icons.Default.Shield)
+            PermissionRow(Icons.Default.Accessibility, "Accessibility Service", "Read & interact with apps", isAccessibilityEnabled) {
+                context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
+            }
+            PermissionRow(Icons.Default.Layers, "Display Over Apps", "Floating AI bubble", hasOverlayPermission) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    context.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
+                }
+            }
+            PermissionRow(Icons.Default.Mic, "Microphone", "Voice commands", hasAudioPermission) { audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO) }
+
+            if (agentEnabled) {
+                Spacer(Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                        .background(if (allReady) JarvisSuccess.copy(alpha = 0.1f) else JarvisError.copy(alpha = 0.1f))
+                        .padding(12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        if (allReady) "✅ All set! Tap floating bubble to start." else "⚠️ Grant all permissions above.",
+                        fontSize = 13.sp, color = if (allReady) JarvisSuccess else JarvisError, textAlign = TextAlign.Center
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
 
             Text("Jarvis v1.0 • by Krinry", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, fontSize = 12.sp, color = DarkOnSurfaceVariant.copy(alpha = 0.5f))
             Spacer(Modifier.height(24.dp))

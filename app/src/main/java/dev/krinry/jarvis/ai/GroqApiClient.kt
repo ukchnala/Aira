@@ -201,9 +201,17 @@ object GroqApiClient {
         }
 
         val response = client.newCall(requestBuilder.build()).execute()
-        if (!response.isSuccessful) return@withContext null
-
-        val body = response.body?.string() ?: return@withContext null
+        val body = response.body?.string().orEmpty()
+        if (!response.isSuccessful) {
+            val detail = try {
+                JSONObject(body).optJSONObject("error")?.optString("message").orEmpty()
+            } catch (_: Exception) { "" }
+            val message = detail.ifBlank { "Provider returned HTTP ${response.code}" }
+                .replace("\\r", " ").replace("\\n", " ").take(180)
+            Log.e(TAG, "Chat HTTP ${response.code}: $message")
+            throw Exception("API HTTP ${response.code}: $message")
+        }
+        if (body.isBlank()) return@withContext null
         JSONObject(body).optJSONArray("choices")?.let { choices ->
             if (choices.length() > 0) {
                 choices.getJSONObject(0).optJSONObject("message")?.optString("content")
@@ -251,10 +259,15 @@ object GroqApiClient {
 
             } catch (e: Exception) {
                 Log.w(TAG, "Agent chat attempt $attempt failed: ${e.message}")
-                if (attempt < maxRetries) {
-                    delay(1000L) // Short 1s retry delay
+                val isForbidden = e.message?.startsWith("API HTTP 403:") == true
+                if (isForbidden && !useFallback && attempt < maxRetries) {
+                    // Some providers restrict individual models. Try the configured fallback once.
+                    useFallback = true
+                    delay(300L)
+                } else if (attempt < maxRetries && !isForbidden) {
+                    delay(1000L) // Short retry for transient failures
                 } else {
-                    throw e // Propagate to caller on last attempt
+                    throw e // Preserve the real server status and message for the UI
                 }
             }
         }
@@ -302,8 +315,14 @@ object GroqApiClient {
 
         if (!response.isSuccessful) {
             val errBody = response.body?.string() ?: ""
-            Log.e(TAG, "Agent error: ${response.code} $errBody")
-            throw Exception("Server error ${response.code}: ${errBody.take(100)}")
+            val serverMessage = try {
+                JSONObject(errBody).optJSONObject("error")?.optString("message")?.takeIf { it.isNotBlank() }
+            } catch (_: Exception) {
+                null
+            }
+            val detail = (serverMessage ?: errBody.ifBlank { response.message }).replace(Regex("[\\r\\n]+"), " ").take(180)
+            Log.e(TAG, "Agent error: ${response.code} $detail")
+            throw Exception("API HTTP ${response.code}: $detail")
         }
 
         val body = response.body?.string() ?: return@withContext null

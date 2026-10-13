@@ -35,7 +35,7 @@ class AgentLlmEngine(private val context: Context) {
         private const val MAX_HISTORY_MESSAGES = 10  // Keep small for token savings
 
         // Compressed system prompt: ~600 tokens vs ~1800 before (67% savings)
-        private const val SYSTEM_PROMPT = """You are Krinry, AI phone assistant. Full device control via AccessibilityService. Respond ONLY in valid JSON, no markdown.
+        private const val SYSTEM_PROMPT = """You are Aira, an AI phone assistant. Full device control via AccessibilityService. Respond ONLY in valid JSON, no markdown.
 
 ACTIONS (JSON format: {"action":"X","speech":"Hindi or empty","reason":"why","status":"in_progress|done"} + action-specific fields):
 - open_app: +app_name | click: +node_id | type: +node_id,text | tap_xy: +x,y | long_press: +x,y
@@ -85,6 +85,21 @@ RULES:
 
         onStatusUpdate?.invoke("🧠 Samajh raha hoon: \"$command\"")
         Log.d(TAG, "Starting task: $command")
+
+        // Explicit Hindi/English "remember this" requests become durable local facts.
+        val lowerCommand = command.lowercase(java.util.Locale.ROOT)
+        val rememberPhrases = listOf("yaad rakhna", "yaad rakh", "is baat ko yaad", "remember that", "remember this", "please remember")
+        val rememberPhrase = rememberPhrases.firstOrNull { lowerCommand.contains(it) }
+        if (rememberPhrase != null) {
+            val start = lowerCommand.indexOf(rememberPhrase) + rememberPhrase.length
+            val fact = command.substring(start).trim().trimStart(',', ':', '-', ' ')
+                .replace(Regex("^(ki|ke|that)\\s+", RegexOption.IGNORE_CASE), "")
+            if (fact.isNotBlank()) {
+                memory.rememberFact("user_note_${System.currentTimeMillis()}", fact)
+                onStatusUpdate?.invoke("🧠 Ye baat future ke liye yaad rakh li.")
+            }
+        }
+
         val stableFacts = memory.loadFacts()
         val relevantMemories = memory.search(command)
         memory.saveCommand(command)
@@ -129,7 +144,7 @@ RULES:
                 GroqApiClient.agentChat(context, SYSTEM_PROMPT, conversationHistory, userMessage)
             } catch (e: Exception) {
                 Log.e(TAG, "LLM call failed: ${e.message}")
-                onStatusUpdate?.invoke("❌ ${e.message?.take(50) ?: "Server error"}")
+                onStatusUpdate?.invoke("❌ ${e.message?.take(150) ?: "Server error"}")
                 memory.finishLatest(command, "Failed: ${e.message?.take(300) ?: "Server error"}")
                 ttsManager.speak("Server se jawab nahi aaya.")
                 return
