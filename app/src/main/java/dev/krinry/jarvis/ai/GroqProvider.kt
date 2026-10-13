@@ -14,8 +14,9 @@ class GroqProvider : LlmProvider {
     override val id = "groq"
     override val displayName = "Groq"
     override val baseUrl = "https://api.groq.com/openai/v1"
-    override val defaultModel = "moonshotai/kimi-k2-instruct-0905"
-    override val defaultFallbackModel = "openai/gpt-oss-120b"
+    // Kimi K2 Instruct 0905 was retired by Groq on April 15, 2026.
+    override val defaultModel = "openai/gpt-oss-120b"
+    override val defaultFallbackModel = "openai/gpt-oss-20b"
     override val supportsSTT = true
 
     private val client = OkHttpClient.Builder()
