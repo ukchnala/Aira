@@ -85,6 +85,21 @@ RULES:
 
         onStatusUpdate?.invoke("🧠 Samajh raha hoon: \"$command\"")
         Log.d(TAG, "Starting task: $command")
+
+        // Explicit Hindi/English "remember this" requests become durable local facts.
+        val lowerCommand = command.lowercase(java.util.Locale.ROOT)
+        val rememberPhrases = listOf("yaad rakhna", "yaad rakh", "is baat ko yaad", "remember that", "remember this", "please remember")
+        val rememberPhrase = rememberPhrases.firstOrNull { lowerCommand.contains(it) }
+        if (rememberPhrase != null) {
+            val start = lowerCommand.indexOf(rememberPhrase) + rememberPhrase.length
+            val fact = command.substring(start).trim().trimStart(',', ':', '-', ' ')
+                .replace(Regex("^(ki|ke|that)\\s+", RegexOption.IGNORE_CASE), "")
+            if (fact.isNotBlank()) {
+                memory.rememberFact("user_note_${System.currentTimeMillis()}", fact)
+                onStatusUpdate?.invoke("🧠 Ye baat future ke liye yaad rakh li.")
+            }
+        }
+
         val stableFacts = memory.loadFacts()
         val relevantMemories = memory.search(command)
         memory.saveCommand(command)
