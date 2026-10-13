@@ -172,6 +172,26 @@ object GroqApiClient {
         }
     }
 
+    /**
+     * Chat entry point for the visible Aira chat UI. Unlike the legacy nullable
+     * helper, this preserves provider HTTP errors (including 403) for display.
+     */
+    suspend fun chatWithDiagnostics(
+        context: Context, messages: List<Map<String, String>>
+    ): String = withContext(Dispatchers.IO) {
+        val provider = getActiveProvider(context)
+        val apiKey = provider.getApiKey(context)
+            ?: throw IllegalStateException("API key set nahi hai. API setup kholkar key save karo.")
+        val model = SecureKeyStore.getPrimaryModel(context).ifEmpty { provider.defaultModel }
+        val system = mapOf(
+            "role" to "system",
+            "content" to "Tum Aira ho, ek helpful Hindi/Hinglish AI assistant. User jis bhasha mein baat kare, usi mein saaf aur chhota jawab do. Android screen par koi action lene ka daava mat karo jab tak action tool ne sach mein execute na kiya ho."
+        )
+        val fullMessages = if (messages.firstOrNull()?.get("role") == "system") messages else listOf(system) + messages
+        chatDirect(provider, apiKey, fullMessages, model)
+            ?: throw IllegalStateException("API se khaali jawab mila.")
+    }
+
     private suspend fun chatDirect(
         provider: LlmProvider, apiKey: String,
         messages: List<Map<String, String>>, model: String
