@@ -129,7 +129,7 @@ RULES:
                 GroqApiClient.agentChat(context, SYSTEM_PROMPT, conversationHistory, userMessage)
             } catch (e: Exception) {
                 Log.e(TAG, "LLM call failed: ${e.message}")
-                onStatusUpdate?.invoke("❌ ${e.message?.take(50) ?: "Server error"}")
+                onStatusUpdate?.invoke("❌ ${e.message?.take(150) ?: "Server error"}")
                 memory.finishLatest(command, "Failed: ${e.message?.take(300) ?: "Server error"}")
                 ttsManager.speak("Server se jawab nahi aaya.")
                 return
