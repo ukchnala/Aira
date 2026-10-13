@@ -31,11 +31,11 @@ android {
     // Build one installable APK instead of multiple ABI split APKs.
     // This avoids accidentally distributing a split/config APK as the standalone installer.
     defaultConfig {
-        applicationId = "com.aira.jarvis"
+        applicationId = "com.aira.jarvis.next"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.2"
+        versionCode = 4
+        versionName = "1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
