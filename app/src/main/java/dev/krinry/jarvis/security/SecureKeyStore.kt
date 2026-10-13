@@ -120,7 +120,12 @@ object SecureKeyStore {
     }
 
     fun getPrimaryModel(context: Context): String {
-        return getEncryptedPrefs(context).getString(KEY_PRIMARY_MODEL, "") ?: ""
+        val model = getEncryptedPrefs(context).getString(KEY_PRIMARY_MODEL, "") ?: ""
+        // Aira may have persisted this retired Groq model from an older build.
+        // Return blank so GroqApiClient uses GroqProvider.defaultModel instead.
+        return if (getApiProvider(context) == "groq" &&
+            model == "moonshotai/kimi-k2-instruct-0905"
+        ) "" else model
     }
 
     fun setFallbackModel(context: Context, model: String) {
